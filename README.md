@@ -1,4 +1,4 @@
-# Contexta - Team Horizon
+# Contexta
 
 ## Autonomous Context-Aware Threat Intelligence & Business Risk Platform
 
