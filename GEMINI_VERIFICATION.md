@@ -15,7 +15,7 @@
 
 ### Step 2: Update the API Key
 
-Edit `project_cyber/backend/.env`:
+Edit `source-code/backend/.env`:
 
 ```bash
 GEMINI_API_KEY=your-new-api-key-here
@@ -25,7 +25,7 @@ GEMINI_MODEL=gemini-2.5-flash
 ### Step 3: Test Gemini API Directly
 
 ```bash
-cd project_cyber/backend
+cd source-code/backend
 python3 test_gemini.py
 ```
 
@@ -58,7 +58,7 @@ Testing Gemini Agent Discussion Generation
 pkill -f uvicorn
 
 # Start backend
-cd project_cyber/backend
+cd source-code/backend
 python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 

@@ -287,7 +287,7 @@ flowchart TB
     subgraph Calculation["Calculate"]
         SUM[Sum Weighted Scores]
         MULT["x10"]
-        SCORE[Final BWVS (0-100)]
+        SCORE["Final BWVS: 0-100"]
     end
 
     CVSS --> W1 --> SUM
@@ -669,7 +669,7 @@ cd contexta
 #### 2. Backend Setup
 
 ```bash
-cd project_cyber/backend
+cd source-code/backend
 
 # Create virtual environment
 python -m venv venv
@@ -692,7 +692,7 @@ uvicorn app.main:app --reload --port 8000
 #### 3. Frontend Setup
 
 ```bash
-cd project_cyber/frontend
+cd source-code/frontend
 
 # Install dependencies
 npm install
@@ -710,7 +710,7 @@ npm run dev
 ### Docker Deployment
 
 ```bash
-cd project_cyber/backend
+cd source-code/backend
 docker-compose up -d
 ```
 
@@ -743,7 +743,7 @@ Full interactive API documentation available at:
 ## Project Structure
 
 ```
-project_cyber/
+source-code/
 ├── backend/                    # FastAPI Backend
 │   ├── app/
 │   │   ├── agents/             # Multi-agent system
@@ -789,10 +789,10 @@ project_cyber/
 
 ## Additional Documentation
 
-- [Agent System Documentation](project_cyber/backend/docs/AGENTS.md)
-- [BWVS Scoring Methodology](project_cyber/backend/docs/BWVS.md)
-- [Digital Twin Engine](project_cyber/backend/docs/DIGITAL_TWIN.md)
-- [Blockchain Ledger](project_cyber/backend/docs/LEDGER.md)
+- [Agent System Documentation](source-code/backend/docs/AGENTS.md)
+- [BWVS Scoring Methodology](source-code/backend/docs/BWVS.md)
+- [Digital Twin Engine](source-code/backend/docs/DIGITAL_TWIN.md)
+- [Blockchain Ledger](source-code/backend/docs/LEDGER.md)
 
 ---
 

@@ -208,12 +208,12 @@ temp/
 # Project Specific
 # =========================
 # Backend logs
-project_cyber/backend/startup_log.txt
-project_cyber/backend/*.log
+source-code/backend/startup_log.txt
+source-code/backend/*.log
 
 # Local database files
-project_cyber/backend/*.db
-project_cyber/backend/data/
+source-code/backend/*.db
+source-code/backend/data/
 
 # Uploaded files
 uploads/
