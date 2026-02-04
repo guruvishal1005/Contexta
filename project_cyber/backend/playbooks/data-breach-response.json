@@ -1,0 +1,124 @@
+{
+  "id": "data-breach-response",
+  "name": "Data Breach Response Playbook",
+  "description": "Comprehensive playbook for responding to data breach incidents",
+  "version": "1.0",
+  "category": "breach_response",
+  "severity_threshold": "high",
+  "steps": [
+    {
+      "order": 1,
+      "name": "Confirm Data Breach",
+      "description": "Verify that a data breach has occurred",
+      "action_type": "manual",
+      "timeout_minutes": 30,
+      "required": true
+    },
+    {
+      "order": 2,
+      "name": "Activate Incident Response Team",
+      "description": "Notify and assemble the IR team including legal and PR",
+      "action_type": "automated",
+      "automation_script": "notify_ir_team.py",
+      "timeout_minutes": 15,
+      "required": true
+    },
+    {
+      "order": 3,
+      "name": "Contain the Breach",
+      "description": "Stop ongoing data exfiltration",
+      "action_type": "manual",
+      "timeout_minutes": 60,
+      "required": true
+    },
+    {
+      "order": 4,
+      "name": "Preserve Evidence",
+      "description": "Secure logs, network captures, and forensic images",
+      "action_type": "automated",
+      "automation_script": "preserve_evidence.py",
+      "timeout_minutes": 120,
+      "required": true
+    },
+    {
+      "order": 5,
+      "name": "Assess Data Exposure",
+      "description": "Determine what data was accessed or exfiltrated",
+      "action_type": "manual",
+      "timeout_minutes": 240,
+      "required": true
+    },
+    {
+      "order": 6,
+      "name": "Identify Affected Individuals",
+      "description": "Compile list of affected customers/employees",
+      "action_type": "manual",
+      "timeout_minutes": 480,
+      "required": true
+    },
+    {
+      "order": 7,
+      "name": "Legal Assessment",
+      "description": "Determine regulatory notification requirements",
+      "action_type": "manual",
+      "timeout_minutes": 120,
+      "required": true
+    },
+    {
+      "order": 8,
+      "name": "Prepare Notifications",
+      "description": "Draft notifications for regulators and affected parties",
+      "action_type": "manual",
+      "timeout_minutes": 240,
+      "required": true
+    },
+    {
+      "order": 9,
+      "name": "Submit Regulatory Notifications",
+      "description": "Submit required notifications (CERT-In within 6 hours)",
+      "action_type": "manual",
+      "timeout_minutes": 60,
+      "required": true
+    },
+    {
+      "order": 10,
+      "name": "Notify Affected Parties",
+      "description": "Send notifications to affected individuals",
+      "action_type": "automated",
+      "automation_script": "send_breach_notifications.py",
+      "timeout_minutes": 480,
+      "required": true
+    },
+    {
+      "order": 11,
+      "name": "Remediate Vulnerabilities",
+      "description": "Fix the security gaps that led to the breach",
+      "action_type": "manual",
+      "timeout_minutes": 1440,
+      "required": true
+    },
+    {
+      "order": 12,
+      "name": "Post-Incident Review",
+      "description": "Conduct lessons learned session",
+      "action_type": "manual",
+      "timeout_minutes": 120,
+      "required": true
+    }
+  ],
+  "escalation_rules": [
+    {
+      "condition": "pii_exposed",
+      "action": "escalate_to_dpo"
+    },
+    {
+      "condition": "regulatory_deadline_approaching",
+      "action": "escalate_to_legal"
+    }
+  ],
+  "notifications": {
+    "on_start": ["ir_team", "legal", "management"],
+    "on_complete": ["board", "management"],
+    "on_failure": ["ciso", "ceo"]
+  }
+}

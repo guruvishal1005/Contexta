@@ -1,0 +1,47 @@
+# FastAPI and Web
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pydantic[email]==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+alembic==1.13.1
+psycopg2-binary==2.9.9
+
+# Redis
+redis==5.0.1
+aioredis==2.0.1
+
+# AI - Google Gemini
+google-generativeai==0.3.2
+
+# Scheduling
+apscheduler==3.10.4
+
+# Graph Analysis
+networkx==3.2.1
+
+# HTTP Client
+httpx==0.26.0
+aiohttp==3.9.1
+
+# Utilities
+python-dotenv==1.0.0
+tenacity==8.2.3
+structlog==24.1.0
+orjson==3.9.12
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+httpx==0.26.0
+
+# Security
+bcrypt==4.1.2
+cryptography==41.0.7

@@ -1,0 +1,115 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contexta-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Contexta
+      - APP_ENV=development
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
+      - DATABASE_URL=postgresql+asyncpg://contexta:contexta_password@postgres:5432/contexta_db
+      - DATABASE_SYNC_URL=postgresql://contexta:contexta_password@postgres:5432/contexta_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyDr3rYt2bpcOV_q1Z-tBiqlsjoBsz3xwEA}
+      - GEMINI_MODEL=gemini-2.5-flash
+      - NVD_API_URL=https://services.nvd.nist.gov/rest/json/cves/2.0
+      - CISA_KEV_URL=https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+      - CVE_FETCH_INTERVAL_HOURS=6
+      - LOG_GENERATION_INTERVAL_MINUTES=5
+      - RISK_CALCULATION_INTERVAL_MINUTES=5
+      - FAKE_LOGS_PER_BATCH=50
+      - FAKE_LOG_ENABLED=true
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - contexta-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: contexta-postgres
+    environment:
+      POSTGRES_USER: contexta
+      POSTGRES_PASSWORD: contexta_password
+      POSTGRES_DB: contexta_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contexta -d contexta_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - contexta-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: contexta-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - contexta-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contexta-worker
+    command: python -m app.workers.scheduler
+    environment:
+      - APP_NAME=Contexta
+      - APP_ENV=development
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-your-super-secret-key-change-in-production}
+      - DATABASE_URL=postgresql+asyncpg://contexta:contexta_password@postgres:5432/contexta_db
+      - DATABASE_SYNC_URL=postgresql://contexta:contexta_password@postgres:5432/contexta_db
+      - REDIS_URL=redis://redis:6379/0
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-pro
+      - NVD_API_URL=https://services.nvd.nist.gov/rest/json/cves/2.0
+      - CISA_KEV_URL=https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+      - CVE_FETCH_INTERVAL_HOURS=6
+      - LOG_GENERATION_INTERVAL_MINUTES=5
+      - RISK_CALCULATION_INTERVAL_MINUTES=5
+      - FAKE_LOGS_PER_BATCH=50
+      - FAKE_LOG_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - contexta-network
+    restart: unless-stopped
+
+networks:
+  contexta-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
