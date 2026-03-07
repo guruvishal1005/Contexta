@@ -1,4 +1,4 @@
-# Contexta
+# CONTEXTA
 
 ## Autonomous Context-Aware Threat Intelligence & Business Risk Platform
 
