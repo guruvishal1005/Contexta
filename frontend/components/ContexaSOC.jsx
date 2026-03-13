@@ -1,24 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 
 // ─── PALETTE & CONSTANTS ───────────────────────────────────────────────────
 const C = {
-  bg:      "#030308",
-  surface: "#080812",
-  card:    "#0c0c1a",
-  border:  "#141428",
-  border2: "#1e1e3a",
-  text:    "#ffffff",
-  muted:   "#e0e0e8",
-  dim:     "#d0d0dc",
-  accent:  "#4f8eff",
-  green:   "#00e5a0",
-  red:     "#ff3a5c",
-  yellow:  "#ffcc00",
-  purple:  "#9f6fff",
-  orange:  "#ff7a30",
-  cyan:    "#00cfff",
+  bg:      "#060B1A",
+  surface: "#0B1224",
+  card:    "#121A33",
+  border:  "rgba(99,102,241,0.25)",
+  border2: "rgba(99,102,241,0.35)",
+  text:    "#E6EDF8",
+  muted:   "#9FB2D4",
+  dim:     "#7F93B8",
+  accent:  "#22D3EE",
+  cyan:    "#22D3EE",
+  indigo:  "#6366F1",
+  blue:    "#60A5FA",
+  purple:  "#A78BFA",
+  teal:    "#34D399",
+  green:   "#22C55E",
+  warning: "#F59E0B",
+  red:     "#EF4444",
+  yellow:  "#A78BFA",
+  orange:  "#F59E0B",
 };
 
 const NAV_ITEMS = [
@@ -27,9 +31,9 @@ const NAV_ITEMS = [
   { id:"bwvs",       icon:"◎", label:"BWVS Scoring" },
   { id:"digital",    icon:"⬢", label:"Digital Twin" },
   { id:"cve",        icon:"◉", label:"CVE Intelligence" },
-  { id:"blockchain", icon:"⬡", label:"Audit Ledger" },
   { id:"playbooks",  icon:"▶", label:"Response Playbooks" },
-  { id:"agents",     icon:"◈", label:"AI Agents" },
+  { id:"agents",     icon:"◈", label:"Agents & Model Health" },
+  { id:"blockchain", icon:"⬡", label:"Audit Ledger" },
 ];
 
 // ─── DATA GENERATORS ──────────────────────────────────────────────────────
@@ -40,16 +44,40 @@ const rndPick = arr => arr[rndInt(0,arr.length)];
 
 const ATTACK_TYPES = ["DDoS","BruteForce","SQLi","PortScan","Bot","Infiltration","Ransomware","Phishing"];
 const SEVERITIES = ["CRITICAL","HIGH","MEDIUM","LOW"];
-const SEV_COLORS = { CRITICAL:C.red, HIGH:C.orange, MEDIUM:C.yellow, LOW:C.green };
+const SEV_COLORS = { CRITICAL:C.red, HIGH:C.warning, MEDIUM:C.blue, LOW:C.green };
 
 const AGENTS = [
   { id:"recon",    name:"Recon Analyst",        role:"Threat Reconnaissance",     color:C.cyan,   status:"ACTIVE" },
   { id:"vuln",     name:"Vuln Assessor",         role:"CVE Correlation",           color:C.purple, status:"ACTIVE" },
-  { id:"forensic", name:"Forensic Investigator", role:"Evidence Collection",       color:C.yellow, status:"ACTIVE" },
-  { id:"response", name:"Response Orchestrator", role:"Playbook Execution",        color:C.green,  status:"ACTIVE" },
-  { id:"intel",    name:"OSINT Collector",        role:"Threat Intelligence Feed",  color:C.orange, status:"STANDBY" },
-  { id:"risk",     name:"Business Risk Scorer",   role:"BWVS Calculation",         color:C.accent, status:"ACTIVE" },
+  { id:"forensic", name:"Forensic Investigator", role:"Evidence Collection",       color:C.blue,   status:"ACTIVE" },
+  { id:"response", name:"Response Orchestrator", role:"Playbook Execution",        color:C.teal,   status:"ACTIVE" },
+  { id:"intel",    name:"OSINT Collector",        role:"Threat Intelligence Feed",  color:C.indigo, status:"STANDBY" },
+  { id:"risk",     name:"Business Risk Scorer",   role:"BWVS Calculation",         color:C.blue,   status:"ACTIVE" },
 ];
+
+const STATIC_ML_HEALTH = {
+  status: "PENDING INTEGRATION",
+  modelVersion: "TBD",
+  accuracy: 92.8,
+  f1Score: 92.4,
+  auc: 96.7,
+  drift: 8.0,
+  note: "Static preview metrics. Live ML telemetry will be wired once the model service is connected.",
+};
+
+const MODEL_HEALTH_SERIES = {
+  accuracy: [89.4, 90.1, 91.3, 91.9, 92.8],
+  f1Score: [88.9, 90.0, 90.9, 91.8, 92.4],
+  auc: [94.8, 95.4, 95.9, 96.3, 96.7],
+  drift: [6.2, 7.0, 7.7, 8.1, 8.0],
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const normalizePct = (value) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return value <= 1 ? value * 100 : value;
+};
 
 function genThreat() {
   const type = rndPick(ATTACK_TYPES);
@@ -102,7 +130,7 @@ function Card({ children, style={}, glow }) {
       border:`1px solid ${glow?glow+"44":C.border}`,
       borderRadius:8,
       padding:16,
-      boxShadow: glow?`0 0 20px ${glow}11`:"none",
+      boxShadow: glow?"0 0 10px rgba(34,211,238,0.15)":"none",
       ...style
     }}>{children}</div>
   );
@@ -117,7 +145,8 @@ function Badge({ label, color }) {
     <span style={{
       background:color+"22", color, border:`1px solid ${color}55`,
       borderRadius:3, padding:"2px 7px", fontSize:10,
-      fontFamily:"monospace", fontWeight:700, letterSpacing:1,
+      display:"inline-flex", width:"fit-content", justifySelf:"start", alignSelf:"center",
+      fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace", fontWeight:700, letterSpacing:1,
     }}>{label}</span>
   );
 }
@@ -126,6 +155,280 @@ function MiniBar({ value, max=10, color=C.accent, height=5 }) {
   return (
     <div style={{ background:C.dim, borderRadius:3, height, overflow:"hidden" }}>
       <div style={{ width:`${Math.min((value/max)*100,100)}%`, height:"100%", background:color, borderRadius:3, transition:"width 0.5s" }} />
+    </div>
+  );
+}
+
+function TinyMetricGraph({ points, color, max=100, invert=false }) {
+  const w = 240;
+  const h = 56;
+  const pad = 6;
+  const usableW = w - pad * 2;
+  const usableH = h - pad * 2;
+  const step = points.length > 1 ? usableW / (points.length - 1) : usableW;
+
+  const normalize = (value) => {
+    const clamped = Math.max(0, Math.min(max, value));
+    const ratio = clamped / max;
+    return invert ? ratio : 1 - ratio;
+  };
+
+  const coords = points.map((v, i) => {
+    const x = pad + i * step;
+    const y = pad + normalize(v) * usableH;
+    return `${x},${y}`;
+  });
+
+  const line = coords.join(" ");
+  const area = `${pad},${h - pad} ${line} ${pad + usableW},${h - pad}`;
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ display:"block" }}>
+      {[0.25, 0.5, 0.75].map((p) => (
+        <line
+          key={p}
+          x1={pad}
+          y1={pad + usableH * p}
+          x2={pad + usableW}
+          y2={pad + usableH * p}
+          stroke={C.border2}
+          strokeWidth="1"
+          opacity="0.7"
+        />
+      ))}
+      <polygon points={area} fill={color} opacity="0.14" />
+      <polyline points={line} fill="none" stroke={color} strokeWidth="2" />
+      {coords.map((pt, i) => {
+        const [x, y] = pt.split(",");
+        const isLast = i === coords.length - 1;
+        return (
+          <circle
+            key={`${pt}-${i}`}
+            cx={x}
+            cy={y}
+            r={isLast ? 3.4 : 2.2}
+            fill={color}
+            opacity={isLast ? 1 : 0.85}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function ModelMetricGraph({ label, value, color, series, invert=false }) {
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${color}33`, borderRadius:6, padding:"8px 10px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+        <span style={{ color:C.muted, fontSize:10 }}>{label}</span>
+        <span style={{ color, fontSize:10, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{value}%</span>
+      </div>
+      <TinyMetricGraph points={series} color={color} max={100} invert={invert} />
+    </div>
+  );
+}
+
+function MetricSparkCard({ label, value, color, series, invert=false }) {
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${color}44`, borderRadius:8, padding:"10px 12px", boxShadow:`0 0 18px ${color}14` }}>
+      <div style={{ color:C.text, fontSize:12, marginBottom:6 }}>{label}</div>
+      <div style={{ color, fontSize:22, fontWeight:700, lineHeight:1, marginBottom:8, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>
+        {value.toFixed(2)}%
+      </div>
+      <TinyMetricGraph points={series} color={color} max={100} invert={invert} />
+    </div>
+  );
+}
+
+function DriftGaugeCard({ value }) {
+  const gaugeColor = value <= 10 ? C.green : value <= 20 ? C.yellow : C.orange;
+  const pct = clamp(value, 0, 100) / 100;
+  const cx = 64;
+  const cy = 64;
+  const r = 46;
+
+  const polar = (p) => {
+    const angle = Math.PI * (1 - p);
+    return { x: cx + r * Math.cos(angle), y: cy - r * Math.sin(angle) };
+  };
+
+  const start = polar(0);
+  const end = polar(pct);
+  const largeArc = pct > 0.5 ? 1 : 0;
+
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${gaugeColor}44`, borderRadius:8, padding:"10px 12px", boxShadow:`0 0 18px ${gaugeColor}14`, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+      <div style={{ color:C.text, fontSize:12, marginBottom:4 }}>Feature Drift</div>
+      <div style={{ display:"flex", justifyContent:"center" }}>
+        <svg width="128" height="86" viewBox="0 0 128 86">
+          <path
+            d={`M ${polar(0).x} ${polar(0).y} A ${r} ${r} 0 1 1 ${polar(1).x} ${polar(1).y}`}
+            fill="none"
+            stroke={C.border2}
+            strokeWidth="10"
+            strokeLinecap="round"
+            opacity="0.8"
+          />
+          <path
+            d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`}
+            fill="none"
+            stroke={gaugeColor}
+            strokeWidth="10"
+            strokeLinecap="round"
+            style={{ filter:`drop-shadow(0 0 8px ${gaugeColor})` }}
+          />
+          <text x={64} y={58} textAnchor="middle" fill={gaugeColor} fontSize="18" fontWeight="700" fontFamily="'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">
+            {value.toFixed(1)}%
+          </text>
+        </svg>
+      </div>
+      <div style={{ color:C.muted, fontSize:10, textAlign:"center" }}>Lower is better</div>
+    </div>
+  );
+}
+
+function DriftBarsCard({ value }) {
+  const labels = ["A1", "A2", "A3", "A4", "B5", "A8", "A10"];
+  const base = [180, 115, 58, 43, 37, 31, 28];
+  const severity = clamp(value / 20, 0.2, 1.2);
+  const bars = base.map((b, i) => Math.max(10, Math.round(b * (1 - i * 0.04) * severity)));
+  const maxBar = Math.max(...bars, 1);
+
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.accent}33`, borderRadius:8, padding:"10px 12px" }}>
+      <div style={{ color:C.text, fontSize:12 }}>Data Drift (Categorical)</div>
+      <div style={{ color:C.muted, fontSize:10, marginBottom:6 }}>Top drifted categories</div>
+      <div style={{ display:"grid", gridTemplateColumns:`repeat(${labels.length}, 1fr)`, alignItems:"end", gap:6, height:92, borderBottom:`1px solid ${C.border2}`, paddingBottom:6 }}>
+        {bars.map((b, i) => (
+          <div key={labels[i]} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+            <div
+              style={{
+                width:"100%",
+                maxWidth:28,
+                height:`${Math.max(6, Math.round((b / maxBar) * 78))}px`,
+                background:`linear-gradient(180deg, ${C.accent}, ${C.purple})`,
+                borderRadius:3,
+                boxShadow:`0 0 10px ${C.accent}33`,
+              }}
+            />
+            <span style={{ color:C.muted, fontSize:9 }}>{labels[i]}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HealthRing({ value, color }) {
+  const pct = clamp(value, 0, 100) / 100;
+  const cx = 42;
+  const cy = 42;
+  const r = 30;
+  const c = 2 * Math.PI * r;
+  const dash = c * pct;
+  const gap = c - dash;
+
+  return (
+    <svg width="84" height="84" viewBox="0 0 84 84" style={{ display:"block" }}>
+      <circle cx={cx} cy={cy} r={r} stroke={C.border2} strokeWidth="8" fill="none" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        stroke={color}
+        strokeWidth="8"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${gap}`}
+        transform={`rotate(-90 ${cx} ${cy})`}
+        style={{ filter:`drop-shadow(0 0 8px ${color})` }}
+      />
+      <text
+        x={cx}
+        y={cy + 5}
+        textAnchor="middle"
+        fill={color}
+        fontSize="14"
+        fontWeight="700"
+        fontFamily="'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace"
+      >
+        {`${Math.round(value)}%`}
+      </text>
+    </svg>
+  );
+}
+
+function ThroughputSpark({ value }) {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhase((p) => p + 1);
+    }, 220);
+    return () => clearInterval(timer);
+  }, []);
+
+  const bars = Array.from({ length: 28 }, (_, i) => {
+    const base = 18 + (Math.sin((i + phase * 0.7) * 0.55) + 1) * 11;
+    const ripple = (Math.cos((i * 0.85) - phase * 0.45) + 1) * 3;
+    const scaled = base + ripple + Math.min(value, 80) * 0.16;
+    return clamp(Math.round(scaled), 8, 40);
+  });
+
+  return (
+    <div style={{ display:"flex", alignItems:"end", gap:2, height:44, overflow:"hidden" }}>
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            width:4,
+            height:h,
+            borderRadius:2,
+            background:`linear-gradient(180deg, ${C.purple}, ${C.accent})`,
+            boxShadow:`0 0 6px ${C.purple}55`,
+            opacity: i > bars.length - 5 ? 1 : 0.82,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AgentHealthPlate({ agent }) {
+  const statusColor = agent.health === "OPTIMAL" ? C.green : agent.health === "HEALTHY" ? C.warning : C.red;
+  return (
+    <div
+      style={{
+        background:`linear-gradient(135deg, ${C.surface}, ${C.card})`,
+        border:`1px solid ${agent.color}44`,
+        borderRadius:10,
+        padding:"10px 12px",
+        boxShadow:`0 0 16px ${agent.color}1f`,
+        position:"relative",
+        overflow:"hidden",
+      }}
+    >
+      <div
+        style={{
+          position:"absolute",
+          inset:0,
+          background:`linear-gradient(120deg, transparent 0%, ${agent.color}0d 50%, transparent 100%)`,
+          pointerEvents:"none",
+        }}
+      />
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8, position:"relative" }}>
+        <div style={{ color:agent.color, fontSize:12, fontWeight:600 }}>{agent.name}</div>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          <Badge label={agent.health} color={statusColor} />
+          <span style={{ color:C.muted, fontSize:10, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{agent.score}%</span>
+        </div>
+      </div>
+      <div style={{ marginBottom:7, position:"relative" }}>
+        <MiniBar value={agent.score} max={100} color={agent.color} height={5} />
+      </div>
+      <div style={{ color:C.dim, fontSize:10, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", position:"relative" }}>
+        {agent.lastMsg}
+      </div>
     </div>
   );
 }
@@ -139,12 +442,12 @@ function Pulse({ color }) {
   );
 }
 
-function StatBox({ label, value, sub, color=C.accent }) {
+function StatBox({ label, value, sub, color=C.accent, labelColor=C.muted, subColor=C.muted }) {
   return (
     <Card style={{ flex:1, minWidth:120 }}>
-      <Label color={C.muted}>{label}</Label>
-      <div style={{ color, fontSize:28, fontWeight:700, fontFamily:"monospace", lineHeight:1 }}>{value}</div>
-      {sub && <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>{sub}</div>}
+      <Label color={labelColor}>{label}</Label>
+      <div style={{ color, fontSize:28, fontWeight:700, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace", lineHeight:1 }}>{value}</div>
+      {sub && <div style={{ color:subColor, fontSize:11, marginTop:4 }}>{sub}</div>}
     </Card>
   );
 }
@@ -191,7 +494,7 @@ function TopologyCanvas({ threats }) {
             {attacked && <circle cx={n.x} cy={n.y} r={18} fill={C.red} opacity={0.15} filter="url(#glow)" />}
             <circle cx={n.x} cy={n.y} r={12} fill={C.card} stroke={attacked?C.red:n.color} strokeWidth={1.5} />
             <circle cx={n.x} cy={n.y} r={5} fill={attacked?C.red:n.color} />
-            <text x={n.x} y={n.y+26} textAnchor="middle" fontSize={9} fill={C.muted} fontFamily="monospace">{n.label}</text>
+            <text x={n.x} y={n.y+26} textAnchor="middle" fontSize={9} fill={C.muted} fontFamily="'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">{n.label}</text>
           </g>
         );
       })}
@@ -201,24 +504,23 @@ function TopologyCanvas({ threats }) {
 
 // ─── BWVS GAUGE ───────────────────────────────────────────────────────────
 function BwvsGauge({ score }) {
-  const pct = score/10;
+  const pct = clamp(score / 10, 0, 1);
   const r=60, cx=80, cy=80;
   const arc = (p, radius=r) => {
     const a = Math.PI + p*Math.PI;
     return { x: cx+radius*Math.cos(a), y: cy+radius*Math.sin(a) };
   };
   const start=arc(0), end=arc(pct);
-  const largeArc = pct>0.5?1:0;
   const color = score>=8?C.red:score>=6?C.orange:score>=4?C.yellow:C.green;
   return (
     <svg width={160} height={100} viewBox="0 0 160 100">
       <path d={`M ${arc(0,r).x} ${arc(0,r).y} A ${r} ${r} 0 1 1 ${arc(1,r).x} ${arc(1,r).y}`}
         fill="none" stroke={C.dim} strokeWidth={8} strokeLinecap="round" />
-      <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`}
+      <path d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`}
         fill="none" stroke={color} strokeWidth={8} strokeLinecap="round"
         style={{ filter:`drop-shadow(0 0 6px ${color})` }} />
-      <text x={cx} y={cy+8} textAnchor="middle" fontSize={22} fontWeight={700} fill={color} fontFamily="monospace">{score.toFixed(1)}</text>
-      <text x={cx} y={cy+22} textAnchor="middle" fontSize={9} fill={C.muted} fontFamily="monospace">BWVS SCORE</text>
+      <text x={cx} y={cy+8} textAnchor="middle" fontSize={22} fontWeight={700} fill={color} fontFamily="'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">{score.toFixed(1)}</text>
+      <text x={cx} y={cy+22} textAnchor="middle" fontSize={9} fill={C.muted} fontFamily="'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace">BWVS SCORE</text>
     </svg>
   );
 }
@@ -235,16 +537,16 @@ function BlockchainViz({ blocks }) {
             borderLeft:`3px solid ${C.accent}`,
           }}>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-              <span style={{ color:C.accent, fontSize:10, fontFamily:"monospace" }}>#{b.hash.slice(0,8)}</span>
+              <span style={{ color:C.accent, fontSize:10, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>#{b.hash.slice(0,8)}</span>
               <span style={{ display:"flex", alignItems:"center", gap:4 }}>
                 <span style={{ color:C.green, fontSize:9 }}>✓ VERIFIED</span>
               </span>
             </div>
             <div style={{ display:"flex", gap:16 }}>
-              <div><span style={{ color:C.muted, fontSize:10 }}>OP: </span><span style={{ color:C.yellow, fontSize:10, fontFamily:"monospace" }}>{b.op}</span></div>
+              <div><span style={{ color:C.muted, fontSize:10 }}>OP: </span><span style={{ color:C.yellow, fontSize:10, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{b.op}</span></div>
               <div><span style={{ color:C.muted, fontSize:10 }}>BY: </span><span style={{ color:C.text, fontSize:10 }}>{b.actor}</span></div>
             </div>
-            <div style={{ color:C.dim, fontSize:9, marginTop:3, fontFamily:"monospace" }}>prev: {b.prev.slice(0,12)}...</div>
+            <div style={{ color:C.dim, fontSize:9, marginTop:3, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>prev: {b.prev.slice(0,12)}...</div>
           </div>
           {i<5&&<div style={{ color:C.muted, fontSize:14 }}>↓</div>}
         </div>
@@ -371,6 +673,64 @@ export default function ContexaSOC() {
   const [discussionRisk, setDiscussionRisk] = useState("");
   const [discussionMessages, setDiscussionMessages] = useState([]);
   const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [modelHealthLive, setModelHealthLive] = useState(false);
+  const [modelHealth, setModelHealth] = useState({
+    ...STATIC_ML_HEALTH,
+    source: "SIMULATED",
+  });
+  const [modelHealthSeries, setModelHealthSeries] = useState(MODEL_HEALTH_SERIES);
+
+  const aiAgentHealth = useMemo(() => {
+    const now = Date.now();
+    const perAgent = AGENTS.map((agent) => {
+      const logs = agentLogs.filter((l) => l.agent === agent.name);
+      const latest = logs[0];
+      const statusBase = agent.status === "ACTIVE" ? 82 : 66;
+      const activityBoost = Math.min(logs.length * 2, 12);
+      const freshnessBoost = latest?.at
+        ? (now - latest.at) <= 10000
+          ? 8
+          : (now - latest.at) <= 30000
+            ? 4
+            : 0
+        : 0;
+
+      const score = Math.min(99, Math.max(45, Math.round(statusBase + activityBoost + freshnessBoost)));
+      const health = score >= 90 ? "OPTIMAL" : score >= 75 ? "HEALTHY" : "DEGRADED";
+
+      return {
+        id: agent.id,
+        name: agent.name,
+        color: agent.color,
+        status: agent.status,
+        score,
+        health,
+        lastMsg: latest?.msg || "Monitoring...",
+      };
+    });
+
+    const overallScore = Math.round(
+      perAgent.reduce((acc, a) => acc + a.score, 0) / Math.max(perAgent.length, 1)
+    );
+    const activeCount = AGENTS.filter((a) => a.status === "ACTIVE").length;
+    const recentLogCount = agentLogs.filter((l) => l.at && (now - l.at) <= 60000).length;
+    const avgRecencySec = Math.round(
+      perAgent.reduce((acc, a) => {
+        const log = agentLogs.find((l) => l.agent === a.name && l.at);
+        if (!log) return acc + 60;
+        return acc + Math.min(60, (now - log.at) / 1000);
+      }, 0) / Math.max(perAgent.length, 1)
+    );
+
+    return {
+      overallScore,
+      activeCount,
+      totalAgents: AGENTS.length,
+      throughputPerMin: recentLogCount,
+      avgRecencySec,
+      perAgent,
+    };
+  }, [agentLogs]);
 
   const handleAgentDiscussion = useCallback(async (riskName) => {
     setDiscussionRisk(riskName);
@@ -426,6 +786,110 @@ export default function ContexaSOC() {
     fetchCVEs();
   },[]);
 
+  // Poll model health endpoint. Falls back to simulated mode if endpoint is unavailable.
+  useEffect(() => {
+    let cancelled = false;
+    const endpoint = process.env.NEXT_PUBLIC_MODEL_HEALTH_API || "http://localhost:8000/api/ml/health";
+
+    const readSeries = (series, fallback) => {
+      if (!Array.isArray(series) || series.length === 0) return fallback;
+      const normalized = series
+        .map((v) => normalizePct(v))
+        .filter((v) => typeof v === "number")
+        .map((v) => +clamp(v, 0, 100).toFixed(2));
+      return normalized.length > 0 ? normalized.slice(-5) : fallback;
+    };
+
+    const pollModelHealth = async () => {
+      try {
+        const res = await fetch(endpoint, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Model health endpoint returned ${res.status}`);
+
+        const data = await res.json();
+        const accuracy = normalizePct(data?.accuracy);
+        const f1Score = normalizePct(data?.f1Score ?? data?.f1 ?? data?.f1_score);
+        const auc = normalizePct(data?.auc ?? data?.aucRoc ?? data?.auc_roc);
+        const drift = normalizePct(data?.drift ?? data?.featureDrift ?? data?.feature_drift);
+
+        if ([accuracy, f1Score, auc, drift].some((v) => v === null)) {
+          throw new Error("Model health payload missing required metrics");
+        }
+
+        const nextAccuracy = +clamp(accuracy, 0, 100).toFixed(2);
+        const nextF1 = +clamp(f1Score, 0, 100).toFixed(2);
+        const nextAuc = +clamp(auc, 0, 100).toFixed(2);
+        const nextDrift = +clamp(drift, 0, 100).toFixed(2);
+
+        if (cancelled) return;
+
+        setModelHealthLive(true);
+        setModelHealth({
+          status: data?.status || "LIVE",
+          modelVersion: data?.modelVersion || data?.model_version || "LIVE",
+          accuracy: nextAccuracy,
+          f1Score: nextF1,
+          auc: nextAuc,
+          drift: nextDrift,
+          note: data?.note || "Live model telemetry from backend endpoint.",
+          source: "API",
+        });
+
+        setModelHealthSeries((prev) => ({
+          accuracy: readSeries(data?.series?.accuracy, [...prev.accuracy.slice(-4), nextAccuracy]),
+          f1Score: readSeries(data?.series?.f1Score || data?.series?.f1 || data?.series?.f1_score, [...prev.f1Score.slice(-4), nextF1]),
+          auc: readSeries(data?.series?.auc || data?.series?.aucRoc || data?.series?.auc_roc, [...prev.auc.slice(-4), nextAuc]),
+          drift: readSeries(data?.series?.drift || data?.series?.featureDrift || data?.series?.feature_drift, [...prev.drift.slice(-4), nextDrift]),
+        }));
+      } catch {
+        if (!cancelled) setModelHealthLive(false);
+      }
+    };
+
+    pollModelHealth();
+    const timer = setInterval(pollModelHealth, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  // Simulated movement for model metrics until real ML endpoint is connected.
+  useEffect(() => {
+    if (modelHealthLive) return;
+
+    const nudge = (value, min, max, step) => +clamp(value + rnd(-step, step), min, max).toFixed(2);
+
+    const timer = setInterval(() => {
+      setModelHealth((prev) => {
+        const accuracy = nudge(prev.accuracy, 86, 97, 0.35);
+        const f1Score = nudge(prev.f1Score, 85, 96, 0.4);
+        const auc = nudge(prev.auc, 92, 99, 0.28);
+        const drift = nudge(prev.drift, 3, 18, 0.55);
+
+        setModelHealthSeries((seriesPrev) => ({
+          accuracy: [...seriesPrev.accuracy.slice(-4), accuracy],
+          f1Score: [...seriesPrev.f1Score.slice(-4), f1Score],
+          auc: [...seriesPrev.auc.slice(-4), auc],
+          drift: [...seriesPrev.drift.slice(-4), drift],
+        }));
+
+        return {
+          ...prev,
+          status: "SIMULATED LIVE",
+          modelVersion: prev.modelVersion || "TBD",
+          accuracy,
+          f1Score,
+          auc,
+          drift,
+          note: "Simulated live telemetry active. Auto-switches to real backend model metrics when endpoint is available.",
+          source: "SIMULATED",
+        };
+      });
+    }, 1800);
+
+    return () => clearInterval(timer);
+  }, [modelHealthLive]);
+
   useEffect(()=>{
     if(!running) return;
     const t = setInterval(()=>{
@@ -438,6 +902,7 @@ export default function ContexaSOC() {
         ts:new Date().toLocaleTimeString(), agent:agent.name,
         msg:rndPick(["Correlating IOC with MITRE ATT&CK","Scanning lateral movement paths","Updating BWVS score","Executing isolation playbook","Querying NVD for patch status","Flagging anomalous user behavior","Cross-referencing CISA KEV feed","Dispatching containment order"]),
         color:agent.color,
+        at: Date.now(),
       },...p].slice(0,50));
     },1200);
     return ()=>clearInterval(t);
@@ -447,17 +912,17 @@ export default function ContexaSOC() {
   const activeThreats = threats.filter(t=>t.status!=="RESOLVED").length;
 
   return (
-    <div style={{ display:"flex", height:"100vh", background:C.bg, color:C.text, fontFamily:"'Courier New',monospace", fontSize:13, overflow:"hidden" }}>
+    <div style={{ display:"flex", height:"100vh", background:C.bg, color:C.text, fontFamily:"'Inter','Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif", fontSize:13, overflow:"hidden" }}>
       <style>{`
         @keyframes ctxPing{0%{transform:scale(1);opacity:0.4}100%{transform:scale(2.8);opacity:0}}
         @keyframes ctxFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes ctxDotBounce{0%,80%,100%{transform:scale(0.4);opacity:0.3}40%{transform:scale(1);opacity:1}}
         @keyframes ctxScan{0%{top:-5%}100%{top:105%}}
         ::-webkit-scrollbar{width:3px;background:transparent}
-        ::-webkit-scrollbar-thumb{background:#1a1a3a;border-radius:2px}
+        ::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.45);border-radius:2px}
         .ctx-nav:hover{background:#0f0f22!important;color:#fff!important}
         .ctx-row:hover{background:#0d0d20!important;cursor:pointer}
-        .ctx-card-hover:hover{border-color:#4f8eff55!important;transform:translateY(-1px);transition:all 0.2s}
+        .ctx-card-hover:hover{border-color:rgba(34,211,238,0.6)!important;filter:brightness(1.06);transform:translateY(-1px);transition:all 0.2s}
       `}</style>
 
       {/* ── SIDEBAR ── */}
@@ -510,7 +975,7 @@ export default function ContexaSOC() {
             marginTop:12, width:"100%", background:"none",
             border:`1px solid ${running?C.red:C.green}`, borderRadius:4,
             color:running?C.red:C.green, padding:"5px 0", fontSize:10,
-            letterSpacing:2, cursor:"pointer", fontFamily:"monospace",
+            letterSpacing:2, cursor:"pointer", fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace",
           }}>{running?"■ PAUSE FEED":"▶ RESUME FEED"}</button>
         </div>
       </div>
@@ -560,7 +1025,7 @@ export default function ContexaSOC() {
                         <span style={{ color:C.muted, fontSize:10 }}>{t.src.slice(0,12)}</span>
                         <span style={{ display:"flex", alignItems:"center", gap:6 }}>
                           <span style={{ color:t.status==="RESOLVED"?C.green:t.status==="ESCALATED"?C.red:C.yellow, fontSize:10 }}>{t.status}</span>
-                          <button onClick={(e)=>{e.stopPropagation();handleAgentDiscussion(`${t.type} attack from ${t.src} — ${t.severity}`);}} style={{ background:C.accent+"22", border:`1px solid ${C.accent}44`, borderRadius:3, color:C.accent, padding:"1px 6px", fontSize:9, cursor:"pointer", fontFamily:"monospace" }}>DISCUSS</button>
+                          <button onClick={(e)=>{e.stopPropagation();handleAgentDiscussion(`${t.type} attack from ${t.src} — ${t.severity}`);}} style={{ background:C.accent+"22", border:`1px solid ${C.accent}44`, borderRadius:3, color:C.accent, padding:"1px 6px", fontSize:9, cursor:"pointer", fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>DISCUSS</button>
                         </span>
                       </div>
                     ))}
@@ -603,7 +1068,7 @@ export default function ContexaSOC() {
                   {cves.filter(c=>c.kev).slice(0,6).map(c=>(
                     <div key={c.id} style={{ marginBottom:8, padding:"6px 8px", background:C.surface, borderRadius:4, borderLeft:`2px solid ${SEV_COLORS[c.severity]}` }}>
                       <div style={{ display:"flex", justifyContent:"space-between" }}>
-                        <span style={{ color:C.yellow, fontSize:11, fontFamily:"monospace" }}>{c.id}</span>
+                        <span style={{ color:C.yellow, fontSize:11, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{c.id}</span>
                         <span style={{ color:SEV_COLORS[c.severity], fontSize:10 }}>CVSS {c.cvss}</span>
                       </div>
                       <div style={{ color:C.muted, fontSize:10 }}>{c.product}</div>
@@ -614,7 +1079,7 @@ export default function ContexaSOC() {
                   <Label color={C.green}>RECENT AUDIT BLOCKS</Label>
                   {blocks.slice(0,5).map((b,i)=>(
                     <div key={i} style={{ marginBottom:6, padding:"6px 8px", background:C.surface, borderRadius:4 }}>
-                      <div style={{ color:C.accent, fontSize:10, fontFamily:"monospace" }}>#{b.hash.slice(0,10)}</div>
+                      <div style={{ color:C.accent, fontSize:10, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>#{b.hash.slice(0,10)}</div>
                       <div style={{ display:"flex", justifyContent:"space-between" }}>
                         <span style={{ color:C.yellow, fontSize:10 }}>{b.op}</span>
                         <span style={{ color:C.green, fontSize:9 }}>✓</span>
@@ -629,10 +1094,11 @@ export default function ContexaSOC() {
           {/* ══ SENTINEL AI ══ */}
           {page==="sentinel" && (
             <div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:20 }}>
                 <StatBox label="AUTOENCODER" value="ACTIVE" sub="Anomaly baseline layer" color={C.purple} />
                 <StatBox label="LSTM LAYER" value="ACTIVE" sub="Temporal pattern detection" color={C.cyan} />
-                <StatBox label="XGBOOST" value="99.97%" sub="Classification accuracy" color={C.green} />
+                <StatBox label="ISOLATION FOREST" value="ACTIVE" sub="Outlier isolation scoring" color={C.orange} />
+                <StatBox label="XGBOOST" value="89.47%" sub="Classification accuracy" color={C.green} />
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:16 }}>
                 <Card glow={C.red}>
@@ -650,7 +1116,7 @@ export default function ContexaSOC() {
                         <span style={{ color:C.orange, fontSize:11 }}>{rnd(0.5,0.99).toFixed(3)}</span>
                         <span style={{ color:C.green, fontSize:11 }}>{(rnd(70,99)).toFixed(1)}%</span>
                         <span style={{ color:C.muted, fontSize:10 }}>{t.agent?.split(" ")[0]}</span>
-                        <button onClick={(e)=>{e.stopPropagation();handleAgentDiscussion(`${t.type} attack from ${t.src} — ${t.severity}`);}} style={{ background:C.accent+"22", border:`1px solid ${C.accent}44`, borderRadius:3, color:C.accent, padding:"2px 8px", fontSize:9, cursor:"pointer", fontFamily:"monospace", letterSpacing:1 }}>DISCUSS</button>
+                        <button onClick={(e)=>{e.stopPropagation();handleAgentDiscussion(`${t.type} attack from ${t.src} — ${t.severity}`);}} style={{ background:C.accent+"22", border:`1px solid ${C.accent}44`, borderRadius:3, color:C.accent, padding:"2px 8px", fontSize:9, cursor:"pointer", fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace", letterSpacing:1 }}>DISCUSS</button>
                       </div>
                     ))}
                   </div>
@@ -659,9 +1125,10 @@ export default function ContexaSOC() {
                   <Card glow={C.purple}>
                     <Label color={C.purple}>MODEL ENSEMBLE STATUS</Label>
                     {[
-                      { name:"Autoencoder", acc:"~99%", type:"Unsupervised", color:C.purple },
-                      { name:"LSTM (seq-60)", acc:"97.91%", type:"Temporal", color:C.cyan },
-                      { name:"XGBoost", acc:"99.97%", type:"Supervised", color:C.green },
+                      { name:"Autoencoder", acc:"88.40%", type:"Unsupervised", color:C.purple },
+                      { name:"LSTM (seq-60)", acc:"87.91%", type:"Temporal", color:C.cyan },
+                      { name:"Isolation Forest", acc:"86.63%", type:"Outlier Detection", color:C.orange },
+                      { name:"XGBoost", acc:"89.47%", type:"Supervised", color:C.green },
                       { name:"SHAP XAI", acc:"Active", type:"Explainability", color:C.yellow },
                     ].map(m=>(
                       <div key={m.name} style={{ marginBottom:8, padding:"7px 10px", background:C.surface, borderRadius:4, borderLeft:`2px solid ${m.color}` }}>
@@ -724,7 +1191,7 @@ export default function ContexaSOC() {
                         <span style={{ color:C.text, fontSize:12 }}>{f.factor}</span>
                         <div style={{ display:"flex", gap:8 }}>
                           <span style={{ color:C.muted, fontSize:11 }}>weight: {f.weight}</span>
-                          <span style={{ color:f.color, fontSize:11, fontFamily:"monospace" }}>{f.value.toFixed(1)}</span>
+                          <span style={{ color:f.color, fontSize:11, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{f.value.toFixed(1)}</span>
                         </div>
                       </div>
                       <MiniBar value={f.value} max={10} color={f.color} />
@@ -742,7 +1209,7 @@ export default function ContexaSOC() {
                         <div style={{ color:C.muted, fontSize:10 }}>{t.src}</div>
                       </div>
                       <div style={{ textAlign:"right" }}>
-                        <div style={{ color:t.bwvs>=7?C.red:C.yellow, fontSize:14, fontWeight:700, fontFamily:"monospace" }}>{t.bwvs}</div>
+                        <div style={{ color:t.bwvs>=7?C.red:C.yellow, fontSize:14, fontWeight:700, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{t.bwvs}</div>
                         <MiniBar value={t.bwvs} max={10} color={t.bwvs>=7?C.red:C.yellow} height={3} />
                       </div>
                     </div>
@@ -759,7 +1226,7 @@ export default function ContexaSOC() {
                   ].map(r=>(
                     <div key={r.label} style={{ marginBottom:10, padding:"8px 10px", background:C.surface, borderRadius:4 }}>
                       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                        <span style={{ color:C.yellow, fontSize:11, fontFamily:"monospace" }}>{r.label}</span>
+                        <span style={{ color:C.yellow, fontSize:11, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{r.label}</span>
                       </div>
                       <div style={{ display:"flex", gap:12, marginBottom:4 }}>
                         <div style={{ flex:1 }}><span style={{ color:C.muted, fontSize:10 }}>CVSS: </span><span style={{ color:C.orange }}>{r.cvss}</span></div>
@@ -827,10 +1294,10 @@ export default function ContexaSOC() {
           {page==="cve" && (
             <div>
               <div style={{ display:"flex", gap:12, marginBottom:20, flexWrap:"wrap" }}>
-                <StatBox label="CVEs TRACKED" value={cveStats.total||cves.length} color={C.purple} />
-                <StatBox label="CISA KEV" value={cveStats.kev||cves.filter(c=>c.kev).length} sub="Known exploited" color={C.red} />
-                <StatBox label="CRITICAL" value={cveStats.critical||cves.filter(c=>c.severity==="CRITICAL").length} color={C.orange} />
-                <StatBox label="NVD FEED" value="LIVE" sub="Real-time NVD data" color={C.green} />
+                <StatBox label="CVEs TRACKED" value={cveStats.total||cves.length} color="#62E8FF" labelColor="#9AF2FF" subColor="#62E8FF" />
+                <StatBox label="CISA KEV" value={cveStats.kev||cves.filter(c=>c.kev).length} sub="Known exploited" color="#7C5CFF" labelColor="#B4A4FF" subColor="#7C5CFF" />
+                <StatBox label="CRITICAL" value={cveStats.critical||cves.filter(c=>c.severity==="CRITICAL").length} color="#FFC857" labelColor="#FFE08F" subColor="#FFC857" />
+                <StatBox label="NVD FEED" value="LIVE" sub="Real-time NVD data" color="#4CFFB8" labelColor="#8AFFD1" subColor="#4CFFB8" />
               </div>
               <Card glow={C.purple}>
                 <Label color={C.purple}>CVE INTELLIGENCE FEED — CISA KEV + NVD</Label>
@@ -840,10 +1307,10 @@ export default function ContexaSOC() {
                 <div style={{ maxHeight:500, overflowY:"auto" }}>
                   {cves.map(c=>(
                     <div key={c.id} className="ctx-row" style={{ display:"grid", gridTemplateColumns:"1.5fr 1fr 0.8fr 0.5fr 1fr 2.5fr", gap:"0 12px", padding:"6px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
-                      <span style={{ color:C.yellow, fontSize:11, fontFamily:"monospace" }}>{c.id}</span>
+                      <span style={{ color:C.yellow, fontSize:11, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{c.id}</span>
                       <span style={{ color:C.text, fontSize:11 }}>{c.product}</span>
                       <div>
-                        <span style={{ color:c.cvss>=9?C.red:c.cvss>=7?C.orange:C.yellow, fontFamily:"monospace", fontSize:12, fontWeight:700 }}>{c.cvss}</span>
+                        <span style={{ color:c.cvss>=9?C.red:c.cvss>=7?C.orange:C.yellow, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace", fontSize:12, fontWeight:700 }}>{c.cvss}</span>
                         <MiniBar value={c.cvss} max={10} color={c.cvss>=9?C.red:c.cvss>=7?C.orange:C.yellow} height={3} />
                       </div>
                       <span style={{ color:c.kev?C.red:C.muted, fontSize:12 }}>{c.kev?"⚠":"—"}</span>
@@ -873,7 +1340,7 @@ export default function ContexaSOC() {
                   <Label color={C.green}>FULL AUDIT LOG</Label>
                   <div style={{ maxHeight:480, overflowY:"auto" }}>
                     {blocks.map((b,i)=>(
-                      <div key={i} style={{ marginBottom:8, padding:"8px 10px", background:C.surface, borderRadius:4, fontFamily:"monospace", fontSize:11 }}>
+                      <div key={i} style={{ marginBottom:8, padding:"8px 10px", background:C.surface, borderRadius:4, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace", fontSize:11 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
                           <span style={{ color:C.accent }}>#{b.hash}</span>
                           <span style={{ color:C.green, fontSize:10 }}>✓ VERIFIED</span>
@@ -975,35 +1442,101 @@ export default function ContexaSOC() {
           {/* ══ AI AGENTS ══ */}
           {page==="agents" && (
             <div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:20 }}>
-                {AGENTS.map(a=>(
-                  <Card key={a.id} glow={a.color} className="ctx-card-hover">
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-                      <div style={{ width:40,height:40,borderRadius:10,background:a.color+"22",border:`1px solid ${a.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20 }}>◈</div>
-                      <Badge label={a.status} color={a.status==="ACTIVE"?C.green:C.yellow} />
+              <div style={{ display:"grid", gridTemplateColumns:"1.45fr 1fr", gap:16, alignItems:"stretch" }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:16, height:"100%" }}>
+                  <Card glow={C.green}>
+                    <Label color={C.green}>AGENTS HEALTH — DYNAMIC</Label>
+                    <div style={{ background:`linear-gradient(135deg, ${C.surface}, ${C.card})`, border:`1px solid ${C.cyan}33`, borderRadius:10, padding:"10px 12px", marginBottom:12 }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr 1fr 1fr", gap:10, alignItems:"center" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <HealthRing value={aiAgentHealth.overallScore} color={aiAgentHealth.overallScore >= 85 ? C.green : aiAgentHealth.overallScore >= 70 ? C.warning : C.red} />
+                          <div>
+                            <div style={{ color:C.muted, fontSize:10 }}>Overall Health</div>
+                            <div style={{ color:C.text, fontSize:12 }}>Live agent readiness</div>
+                          </div>
+                        </div>
+                        <div style={{ background:C.card, border:`1px solid ${C.cyan}33`, borderRadius:8, padding:"8px 10px" }}>
+                          <div style={{ color:C.muted, fontSize:10, marginBottom:4 }}>Agents Online</div>
+                          <div style={{ color:C.cyan, fontSize:24, lineHeight:1, fontWeight:700, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{aiAgentHealth.activeCount}/{aiAgentHealth.totalAgents}</div>
+                        </div>
+                        <div style={{ background:C.card, border:`1px solid ${C.indigo}44`, borderRadius:8, padding:"8px 10px" }}>
+                          <div style={{ color:C.text, fontSize:11, fontWeight:600, letterSpacing:0.5, marginBottom:4 }}>Throughput</div>
+                          <ThroughputSpark value={aiAgentHealth.throughputPerMin} />
+                          <div style={{ color:C.cyan, fontSize:14, marginTop:6, fontWeight:700, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{aiAgentHealth.throughputPerMin}/min</div>
+                        </div>
+                        <div style={{ background:C.card, border:`1px solid ${C.blue}44`, borderRadius:8, padding:"8px 10px" }}>
+                          <div style={{ color:C.muted, fontSize:10, marginBottom:4 }}>Avg Response Age</div>
+                          <div style={{ color:C.blue, fontSize:24, lineHeight:1, fontWeight:700, fontFamily:"'JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" }}>{aiAgentHealth.avgRecencySec}s</div>
+                          <div style={{ color:C.dim, fontSize:10, marginTop:6 }}>Processing latency</div>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ color:a.color, fontWeight:700, fontSize:13, marginBottom:2 }}>{a.name}</div>
-                    <div style={{ color:C.muted, fontSize:11, marginBottom:10 }}>{a.role}</div>
-                    <div style={{ background:C.surface, borderRadius:4, padding:"6px 8px", fontSize:10, color:C.dim, fontFamily:"monospace" }}>
-                      {agentLogs.find(l=>l.agent===a.name)?.msg||"Monitoring..."}
+
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                      {aiAgentHealth.perAgent.map((a) => (
+                        <AgentHealthPlate key={a.id} agent={a} />
+                      ))}
                     </div>
-                    <button onClick={()=>handleAgentDiscussion(`${a.role} — ${a.name} Analysis`)} style={{ marginTop:8, width:"100%", background:a.color+"18", border:`1px solid ${a.color}44`, borderRadius:4, color:a.color, padding:"5px 0", fontSize:10, letterSpacing:1, cursor:"pointer", fontFamily:"monospace" }}>▶ START DISCUSSION</button>
                   </Card>
-                ))}
-              </div>
-              <Card glow={C.purple}>
-                <Label color={C.purple}>MULTI-AGENT COLLABORATION LOG</Label>
-                <div style={{ maxHeight:320, overflowY:"auto" }}>
-                  {agentLogs.map((l,i)=>(
-                    <div key={i} style={{ display:"flex", gap:12, padding:"5px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
-                      <span style={{ color:C.muted, fontSize:10, flexShrink:0, width:70 }}>{l.ts}</span>
-                      <span style={{ color:l.color, fontSize:11, flexShrink:0, minWidth:150 }}>{l.agent}</span>
-                      <span style={{ color:C.text, fontSize:11 }}>{l.msg}</span>
+
+                  <Card glow={C.purple} style={{ marginTop:"auto" }}>
+                    <Label color={C.purple}>MULTI-AGENT COLLABORATION LOG</Label>
+                    <div style={{ maxHeight:320, overflowY:"auto" }}>
+                      {agentLogs.map((l,i)=>(
+                        <div key={i} style={{ display:"flex", gap:12, padding:"5px 0", borderBottom:`1px solid ${C.border}`, alignItems:"center" }}>
+                          <span style={{ color:C.muted, fontSize:10, flexShrink:0, width:70 }}>{l.ts}</span>
+                          <span style={{ color:l.color, fontSize:11, flexShrink:0, minWidth:150 }}>{l.agent}</span>
+                          <span style={{ color:C.text, fontSize:11 }}>{l.msg}</span>
+                        </div>
+                      ))}
+                      {agentLogs.length===0&&<div style={{ color:C.muted,padding:30,textAlign:"center" }}>Agents initializing...</div>}
                     </div>
-                  ))}
-                  {agentLogs.length===0&&<div style={{ color:C.muted,padding:30,textAlign:"center" }}>Agents initializing...</div>}
+                  </Card>
                 </div>
-              </Card>
+
+                <div style={{ display:"flex", flexDirection:"column", gap:16, height:"100%" }}>
+                  <Card glow={C.cyan} style={{ height:"100%", display:"flex", flexDirection:"column" }}>
+                    <Label color={C.cyan}>MODEL HEALTH — LIVE / INTEGRATION READY</Label>
+                    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, padding:"8px 10px", marginBottom:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div>
+                        <div style={{ color:C.muted, fontSize:10 }}>Status</div>
+                        <div style={{ color:modelHealthLive ? C.green : C.yellow, fontSize:12, letterSpacing:1 }}>{modelHealth.status}</div>
+                      </div>
+                      <div style={{ display:"flex", gap:6 }}>
+                        <Badge label={`v${modelHealth.modelVersion}`} color={C.purple} />
+                        <Badge label={modelHealth.source} color={modelHealthLive ? C.green : C.yellow} />
+                      </div>
+                    </div>
+                    <div style={{ display:"grid", gap:8, flex:1, alignContent:"start" }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <MetricSparkCard
+                          label="Accuracy"
+                          value={modelHealth.accuracy}
+                          color={C.cyan}
+                          series={modelHealthSeries.accuracy}
+                        />
+                        <MetricSparkCard
+                          label="F1 Score"
+                          value={modelHealth.f1Score}
+                          color={C.blue}
+                          series={modelHealthSeries.f1Score}
+                        />
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                        <DriftGaugeCard value={modelHealth.drift} />
+                        <MetricSparkCard
+                          label="AUC-ROC"
+                          value={modelHealth.auc}
+                          color={C.purple}
+                          series={modelHealthSeries.auc}
+                        />
+                      </div>
+                      <DriftBarsCard value={modelHealth.drift} />
+                    </div>
+                    <div style={{ color:C.dim, fontSize:10, lineHeight:1.5, marginTop:10 }}>{modelHealth.note}</div>
+                  </Card>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1021,3 +1554,4 @@ export default function ContexaSOC() {
     </div>
   );
 }
+
