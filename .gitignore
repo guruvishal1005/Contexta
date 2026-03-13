@@ -208,12 +208,18 @@ temp/
 # Project Specific
 # =========================
 # Backend logs
-source-code/backend/startup_log.txt
-source-code/backend/*.log
+backend/startup_log.txt
+backend/*.log
 
 # Local database files
-source-code/backend/*.db
-source-code/backend/data/
+backend/*.db
+backend/data/
+
+# ML artifacts (models, outputs)
+*.pkl
+*.joblib
+backend/ml/*.png
+backend/ml/*.pkl
 
 # Uploaded files
 uploads/

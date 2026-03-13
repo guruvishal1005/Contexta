@@ -669,7 +669,7 @@ cd contexta
 #### 2. Backend Setup
 
 ```bash
-cd source-code/backend
+cd backend
 
 # Create virtual environment
 python -m venv venv
@@ -692,7 +692,7 @@ uvicorn app.main:app --reload --port 8000
 #### 3. Frontend Setup
 
 ```bash
-cd source-code/frontend
+cd frontend
 
 # Install dependencies
 npm install
@@ -710,7 +710,7 @@ npm run dev
 ### Docker Deployment
 
 ```bash
-cd source-code/backend
+cd backend
 docker-compose up -d
 ```
 
@@ -743,56 +743,58 @@ Full interactive API documentation available at:
 ## Project Structure
 
 ```
-source-code/
+Contexta/
 ├── backend/                    # FastAPI Backend
 │   ├── app/
-│   │   ├── agents/             # Multi-agent system
-│   │   │   ├── orchestrator.py    # Agent coordinator
-│   │   │   ├── analyst.py         # Security analyst agent
-│   │   │   ├── intel.py           # Threat intel agent
-│   │   │   ├── forensics.py       # Forensics agent
-│   │   │   ├── business.py        # Business impact agent
-│   │   │   └── response.py        # Response agent
-│   │   ├── api/                # API routes
-│   │   ├── ingestion/          # Data collectors
-│   │   │   ├── cve_collector.py   # CVE feed collector
-│   │   │   └── log_generator.py   # SIEM log generator
-│   │   ├── ledger/             # Blockchain ledger
-│   │   │   └── chain.py           # Hash chain implementation
-│   │   ├── models/             # Database models
-│   │   ├── risk_engine/        # Risk scoring
-│   │   │   ├── bwvs.py            # BWVS calculator
-│   │   │   └── ranking.py         # Priority ranking
+│   │   ├── agents/             # Multi-agent SOC system
+│   │   ├── api/                # REST API routes
+│   │   ├── auth/               # JWT authentication
+│   │   ├── ingestion/          # Data collectors (CVE, SIEM)
+│   │   ├── ledger/             # Blockchain audit ledger
+│   │   ├── models/             # SQLAlchemy ORM models
+│   │   ├── risk_engine/        # BWVS risk scoring
 │   │   ├── schemas/            # Pydantic schemas
-│   │   ├── services/           # Business logic
-│   │   ├── twin/               # Digital twin
-│   │   │   └── engine.py          # NetworkX simulation
-│   │   └── main.py                # Application entry point
-│   ├── docs/                   # Documentation
-│   ├── migrations/             # Alembic migrations
-│   ├── playbooks/              # Response playbooks
+│   │   ├── services/           # Business logic layer
+│   │   ├── twin/               # Digital twin simulation
+│   │   ├── utils/              # Utilities & logging
+│   │   ├── workers/            # Background schedulers
+│   │   └── main.py             # Application entry point
+│   ├── migrations/             # Alembic database migrations
+│   ├── ml/                     # ML models & training scripts
+│   ├── playbooks/              # Incident response playbooks
+│   ├── scripts/                # Utility scripts
 │   └── tests/                  # Test suite
 │
-├── frontend/                   # Next.js Frontend
+├── frontend/                   # Next.js 14 Dashboard
 │   ├── app/                    # Next.js app router
 │   ├── components/             # React components
-│   │   ├── Dashboard.tsx          # Main dashboard
-│   │   ├── AttackSimulator.tsx    # Attack simulation UI
-│   │   ├── ExecutiveView.tsx      # Executive dashboard
 │   │   └── dashboard/          # Dashboard widgets
-│   └── contexts/               # React contexts
+│   ├── contexts/               # React contexts
+│   ├── hooks/                  # Custom React hooks
+│   ├── lib/                    # Utility libraries
+│   └── utils/                  # Helper functions
 │
-└── README.md                      # This file
+├── docs/                       # Project documentation
+│   ├── AGENTS.md               # Multi-agent system
+│   ├── API_DOCUMENTATION.md    # API reference
+│   ├── BWVS.md                 # Risk scoring methodology
+│   ├── DIGITAL_TWIN.md         # Network simulation
+│   └── LEDGER.md               # Blockchain ledger
+│
+└── README.md                   # This file
 ```
 
 ---
 
 ## Additional Documentation
 
-- [Agent System Documentation](source-code/backend/docs/AGENTS.md)
-- [BWVS Scoring Methodology](source-code/backend/docs/BWVS.md)
-- [Digital Twin Engine](source-code/backend/docs/DIGITAL_TWIN.md)
-- [Blockchain Ledger](source-code/backend/docs/LEDGER.md)
+- [Agent System Documentation](docs/AGENTS.md)
+- [BWVS Scoring Methodology](docs/BWVS.md)
+- [Digital Twin Engine](docs/DIGITAL_TWIN.md)
+- [Blockchain Ledger](docs/LEDGER.md)
+- [API Reference](docs/API_DOCUMENTATION.md)
+- [Attack Simulator Guide](docs/ATTACK_SIMULATOR_GUIDE.md)
+- [Gemini AI Setup](docs/GEMINI_VERIFICATION.md)
 
 ---
 
