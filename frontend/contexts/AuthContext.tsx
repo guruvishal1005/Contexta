@@ -46,8 +46,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const userData = await authApi.getMe();
       setUser(userData);
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
+    } catch {
+      // Token can be expired/stale on first load; treat this as unauthenticated state.
+      apiClient.clearTokens();
       setUser(null);
     } finally {
       setIsLoading(false);

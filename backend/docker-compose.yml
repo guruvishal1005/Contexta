@@ -19,7 +19,7 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
       - JWT_ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyDr3rYt2bpcOV_q1Z-tBiqlsjoBsz3xwEA}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key-here}
       - GEMINI_MODEL=gemini-2.5-flash
       - NVD_API_URL=https://services.nvd.nist.gov/rest/json/cves/2.0
       - CISA_KEV_URL=https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
